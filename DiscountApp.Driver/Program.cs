@@ -1,4 +1,3 @@
-using DiscountApp;
 using DiscountApp.Driver.Extensions;
 using DiscountApp.Driver.Parsers;
 using DiscountApp.Driver.Repositories;

@@ -1,3 +1,7 @@
+using DiscountApp.Driver.Core;
+using DiscountApp.Driver.Enums;
+using DiscountApp.Driver.Models;
+
 namespace DiscountApp.Driver.Rules;
 
 /// <summary>
@@ -32,16 +36,20 @@ public class DiscountRuleApplicationContextBuilder : IDiscountApplicationContext
         decimal availableBudget,
         IEnumerable<Result<TransactionInputModel>> transactionResults) => transaction.Size switch
         {
-            PackageSize.Small => new SmallPackageRuleApplicationContext
+            PackageSize.Small => new SmallPackageDiscountApplicationContext
             {
-                Size = transaction.Size,
                 Provider = transaction.Provider,
                 Date = transaction.Date,
                 AvailableBudget = availableBudget
             },
-            PackageSize.Large => new LargePackageRuleApplicationContext
+            PackageSize.Medium => new MediumPackageDiscountApplicationContext
             {
-                Size = transaction.Size,
+                Provider = transaction.Provider,
+                Date = transaction.Date,
+                AvailableBudget = availableBudget,
+            },
+            PackageSize.Large => new LargePackageDiscountApplicationContext
+            {
                 Provider = transaction.Provider,
                 Date = transaction.Date,
                 AvailableBudget = availableBudget,
@@ -55,12 +63,6 @@ public class DiscountRuleApplicationContextBuilder : IDiscountApplicationContext
                     .Where(tr => tr.Size is PackageSize.Large)
                     .Count()
             },
-            PackageSize.Medium => new MediumPackageRuleApplicationContext
-            {
-                Size = transaction.Size,
-                Provider = transaction.Provider,
-                Date = transaction.Date,
-                AvailableBudget = availableBudget,
-            }
+            _ => throw new ArgumentOutOfRangeException(nameof(transaction.Size))
         };
 }
