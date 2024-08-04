@@ -1,5 +1,9 @@
-
-using Vinted;
+using DiscountApp;
+using DiscountApp.Driver.Extensions;
+using DiscountApp.Driver.Parsers;
+using DiscountApp.Driver.Repositories;
+using DiscountApp.Driver.Rules;
+using DiscountApp.Driver.Services;
 
 // if (args.Length is not 1 || args[0] is "--help")
 // {
@@ -13,14 +17,14 @@ var filename = "input.txt";
 
 try {
     var lines = await File.ReadAllLinesAsync(filename);
-    var parseResults = lines.Select(TransactionInputParser.Parse);
+    var parseResults = lines.Select(TransactionInputModelParser.Parse);
 
     // Poor man's dependency injection
-    var transactionPriceRepository = new TransactionPriceRepository();
-    var discountCalculationService = new DiscountCalculationService(
-        new SmallPackageSizeDiscountRule(transactionPriceRepository),
-        new MediumPackageSizeDiscountRule(transactionPriceRepository),
-        new LargePackageSizeDiscountRule(transactionPriceRepository),
+    var transactionPriceRepository = new HardcodedTransactionPriceRepository();
+    var discountCalculationService = new DiscountApplicationService(
+        new SmallPackageRule(transactionPriceRepository),
+        new MediumPackageRule(transactionPriceRepository),
+        new LargePackageRule(transactionPriceRepository),
         new DiscountRuleApplicationContextBuilder()
     );
     var discountedTransactionResults = discountCalculationService.CalculateDiscounts(parseResults);
