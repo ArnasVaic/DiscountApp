@@ -7,5 +7,5 @@ The gist link is secret so I cannot post it here.
 
 ## Running the application
 
-You have the `dotnet` cli installed, checkout and run `dotnet run -- input.txt`.
+If you have the `dotnet` cli installed, checkout and run `dotnet run -- input.txt`.
 If you want to use the executable, you can do `./discount-app input.txt`.
