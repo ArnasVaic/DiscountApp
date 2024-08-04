@@ -1,5 +1,7 @@
 
-if(args.Length is not 1 || args[0] is "--help")
+using Vinted;
+
+if (args.Length is not 1 || args[0] is "--help")
 {
     Console.Error.WriteLine("usage: vinted-hw <file>");
     return;
@@ -7,9 +9,13 @@ if(args.Length is not 1 || args[0] is "--help")
 
 var filename = args[0];
 
-try {
-    var file = File.ReadAllText(filename);
+// var filename = "input.txt";
 
+try {
+    var lines = await File.ReadAllLinesAsync(filename);
+    var parseResults = lines.Select(TransactionInputParser.Parse);
+    var discountCalculationService = new DiscountCalculationService();
+    var discountResult = discountCalculationService.CalculateDiscounts(parseResults);
 }
 catch(Exception ex)
 {
