@@ -18,7 +18,7 @@ public class Driver(
     /// <summary>
     /// Usage text.
     /// </summary>
-    public const string UsageText = "usage:\n\tvinted-hw <file>\nor if running via dotnet cli:\n\tdotnet run -- <file>";
+    public const string UsageText = "usage:\n\tdiscount-app <file>\nor if running via dotnet cli:\n\tdotnet run -- <file>";
 
     /// <summary>
     /// Try to create application driver from given args, can fail if args are invalid.
