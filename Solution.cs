@@ -1,62 +1,92 @@
-using System.ComponentModel;
 using System.Reflection;
 
 namespace Vinted;
 
 [AttributeUsage(AttributeTargets.Field, AllowMultiple = true)]
-public class AcceptedNamesAttribute(params string[] names) : Attribute
+public class DisplayNameAttribute(string name) : Attribute
 {
-    public IEnumerable<string> Names { get; } = names;
+    public string Name { get; } = name;
 }
 
 public enum Provider
 {       
-    [AcceptedNames("LP")]
+    [DisplayName("LP")]
     LaPoste,
     
-    [AcceptedNames("MR")]
+    [DisplayName("MR")]
     MondialRelay
 }
 
 public enum PackageSize
 {
-    [AcceptedNames("S")]
+    [DisplayName("S")]
     Small,
-    [AcceptedNames("M")]
+    [DisplayName("M")]
     Medium,
-    [AcceptedNames("L")]
+    [DisplayName("L")]
     Large
+}
+
+public static class EnumExtensions
+{
+    public static string? GetDisplayNameOrDefault<TEnum>(this TEnum value) where TEnum : struct, Enum
+    {
+        var valueName = Enum.GetName(value);
+
+        if(valueName is null)
+        {
+            return default;
+        }
+
+        var field = typeof(TEnum)
+            .GetFields(BindingFlags.Public | BindingFlags.Static)
+            .First(field => field.Name == valueName);
+
+        var attribute = field.GetCustomAttribute<DisplayNameAttribute>();
+
+        if(attribute is null)
+        {
+            return default;
+        }
+
+        return attribute.Name;
+    }
 }
 
 public record TransactionInputModel(DateOnly Date, PackageSize Size, Provider Provider);
 
 public static class EnumParsingUtilities
 {
-    public static bool TryParseByAcceptedNames<TEnum>(string input, out TEnum result) where TEnum : struct
+    /// <summary>
+    /// Tries to parse enum from string by display name or by value names if display name is not set.
+    /// </summary>
+    /// <typeparam name="TEnum">Type of enum</typeparam>
+    /// <param name="input">Input string</param>
+    /// <param name="result">Result enum value</param>
+    /// <returns>Boolean flag indicating success or failure</returns>
+    /// <exception cref="Exception"></exception>
+    public static bool TryParseByDisplayName<TEnum>(string input, out TEnum result) where TEnum : struct
     {
         result = default;
         var fields = typeof(TEnum).GetFields(BindingFlags.Public | BindingFlags.Static);
-        var fieldAcceptedNamesLookup = fields.ToDictionary(
+        var fieldDisplayNameLookup = fields.ToDictionary(
             field => Enum.Parse<TEnum>(field.Name),
-            field => field
-                .GetCustomAttributes<AcceptedNamesAttribute>()
-                .SelectMany(attr => attr.Names)
+            field => field.GetCustomAttribute<DisplayNameAttribute>()?.Name ?? field.Name
         );
 
-        Dictionary<string, TEnum> enumValueLookup = new();
+        Dictionary<string, TEnum> enumValueLookup = [];
 
-        foreach(var (enumValue, acceptedNames) in fieldAcceptedNamesLookup)
+        foreach(var (enumValue, displayName) in fieldDisplayNameLookup)
         {
-            if(acceptedNames.Any(enumValueLookup.ContainsKey))
+            if(enumValueLookup.ContainsKey(displayName))
             {
-                throw new Exception("Different enum values cannot have the same accepted name.");
+                throw new Exception("Different enum values cannot have the same display name.");
             }
 
-            foreach (var name in acceptedNames)
-                enumValueLookup.Add(name, enumValue);
+            enumValueLookup.Add(displayName, enumValue);
         }
 
-        if (!enumValueLookup.Any())
+        if (enumValueLookup.Count is 0)
         {
             return false;
         }
@@ -107,12 +137,12 @@ public static class TransactionInputParser
             return input;
         }
 
-        if(!EnumParsingUtilities.TryParseByAcceptedNames<PackageSize>(tokens[1], out var size))
+        if(!EnumParsingUtilities.TryParseByDisplayName<PackageSize>(tokens[1], out var size))
         {
             return input;
         }
 
-        if(!EnumParsingUtilities.TryParseByAcceptedNames<Provider>(tokens[2], out var provider))
+        if(!EnumParsingUtilities.TryParseByDisplayName<Provider>(tokens[2], out var provider))
         {
             return input;
         }
@@ -150,64 +180,136 @@ public record DiscountedTransactionModel(
 public interface IDiscountRuleApplicationContext
 {
     DateOnly Date { get; init; }
-    PackageSize PackageSize { get; init; }
+    PackageSize Size { get; init; }
     Provider Provider { get; init; }
     decimal AvailableBudget { get; init; }
 }
 
-public class SmallPackageRuleApplicationContext : IDiscountRuleApplicationContext
+public class SmallPackageRuleApplicationContext 
+    : IDiscountRuleApplicationContext
 {
-    public decimal AvailableBudget { get; init; }
-    public DateOnly Date { get; init; }
-    public PackageSize PackageSize { get; init; }
-    public Provider Provider { get; init; }
+    public required decimal AvailableBudget { get; init; }
+    public required DateOnly Date { get; init; }
+    public required PackageSize Size { get; init; }
+    public required Provider Provider { get; init; }
 }
 
-public class LargePackageRuleApplicationContext : IDiscountRuleApplicationContext
+public class MediumPackageRuleApplicationContext 
+    : IDiscountRuleApplicationContext
 {
-    public DateOnly Date { get; init; }
-    public PackageSize PackageSize { get; init; }
-    public Provider Provider { get; init; }
-    public decimal AvailableBudget { get; init; }
-    public bool IsThirdTransactionWithLaPosteProviderThisMonth { get; init; }
+    public required DateOnly Date { get; init; }
+    public required PackageSize Size { get; init; }
+    public required Provider Provider { get; init; }
+    public required decimal AvailableBudget { get; init; }
 }
 
-public interface IDiscountRule<TDiscountRuleApplicationContext> where TDiscountRuleApplicationContext : IDiscountRuleApplicationContext
+public class LargePackageRuleApplicationContext 
+    : IDiscountRuleApplicationContext
+{
+    public required DateOnly Date { get; init; }
+    public required PackageSize Size { get; init; }
+    public required Provider Provider { get; init; }
+    public required decimal AvailableBudget { get; init; }
+    public required int LaPosteTransactionsThisMonth { get; init; }
+}
+
+public interface IDiscountRule<TDiscountRuleApplicationContext> 
+where TDiscountRuleApplicationContext 
+    : IDiscountRuleApplicationContext
 {
     DiscountedTransactionModel ApplyRule(TDiscountRuleApplicationContext context);
 }
 
-public class SmallPackageSizeDiscountRule(TransactionPriceRepository transactionCostRepository) : IDiscountRule<SmallPackageRuleApplicationContext>
+public class SmallPackageSizeDiscountRule(TransactionPriceRepository transactionCostRepository) 
+: IDiscountRule<SmallPackageRuleApplicationContext>
 {
-    public DiscountedTransactionModel ApplyRule(TransactionInputModel transaction, SmallPackageRuleApplicationContext context)
+    public DiscountedTransactionModel ApplyRule(SmallPackageRuleApplicationContext context)
     {
-        ArgumentNullException.ThrowIfNull(transaction);
         ArgumentNullException.ThrowIfNull(context);
 
-        if(transaction.Size is not PackageSize.Small)
+        if(context.Size is not PackageSize.Small)
         {
             // Sanity check
             throw new InvalidOperationException("Small package discount rule can only accept small package transactions");
         }
 
-        var lowestPrice = transactionCostRepository.GetBestPriceForSize(transaction.Size);
-        var currentPrice = transactionCostRepository.Get(transaction.Provider, transaction.Size);
+        var lowestPrice = transactionCostRepository.GetBestPriceForSize(context.Size);
+        var currentPrice = transactionCostRepository.Get(context.Provider, context.Size);
         var coveredPrice = Math.Min(context.AvailableBudget, currentPrice - lowestPrice);
 
         return new DiscountedTransactionModel(
-            transaction.Date,
-            transaction.Size,
-            transaction.Provider,
+            context.Date,
+            context.Size,
+            context.Provider,
             currentPrice - coveredPrice,
             coveredPrice
         );
     }
 }
 
+public class MediumPackageSizeDiscountRule(TransactionPriceRepository transactionCostRepository) 
+: IDiscountRule<MediumPackageRuleApplicationContext>
+{
+    public DiscountedTransactionModel ApplyRule(MediumPackageRuleApplicationContext context)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+
+        if(context.Size is not PackageSize.Medium)
+        {
+            // Sanity check
+            throw new InvalidOperationException("Medium package discount rule can only accept medium package transactions");
+        }
+
+        var currentPrice = transactionCostRepository.Get(context.Provider, context.Size);
+
+        return new DiscountedTransactionModel(
+            context.Date,
+            context.Size,
+            context.Provider,
+            currentPrice,
+            0
+        );
+    }
+}
+
+public class LargePackageSizeDiscountRule(TransactionPriceRepository transactionCostRepository) 
+: IDiscountRule<LargePackageRuleApplicationContext>
+{
+    public DiscountedTransactionModel ApplyRule(LargePackageRuleApplicationContext context)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+
+        if(context.Size is not PackageSize.Large)
+        {
+            // Sanity check
+            throw new InvalidOperationException("Large package discount rule can only accept large package transactions");
+        }
+
+        var currentPrice = transactionCostRepository.Get(context.Provider, context.Size);
+        var coveredPrice = 0m;
+
+        if(context.LaPosteTransactionsThisMonth is 2)
+        {
+            // This is the third transaction, try to cover the whole cost
+            coveredPrice = Math.Min(context.AvailableBudget, currentPrice);
+        }
+
+        return new DiscountedTransactionModel(
+            context.Date,
+            context.Size,
+            context.Provider,
+            currentPrice - coveredPrice,
+            coveredPrice
+        );
+    }
+}
+
+
 public interface IDiscountRuleApplicationContextBuilder
 {
     IDiscountRuleApplicationContext Build( 
         int transactionIndex,
+        TransactionInputModel transaction,
         decimal availableBudget,
         IEnumerable<Result<TransactionInputModel>> transactionResults);
 }
@@ -216,69 +318,65 @@ public class DiscountRuleApplicationContextBuilder : IDiscountRuleApplicationCon
 {
     public IDiscountRuleApplicationContext Build(
         int transactionIndex,
+        TransactionInputModel transaction,
         decimal availableBudget,
         IEnumerable<Result<TransactionInputModel>> transactionResults) => transaction.Size switch
-    {
-        PackageSize.Small => new SmallPackageRuleApplicationContext { AvailableBudget = availableBudget },
-        PackageSize.Large => new LargePackageRuleApplicationContext
         {
-            AvailableBudget = availableBudget,
-            IsThirdTransactionWithLaPosteProviderThisMonth = transactionResults
-                .Where(result => result.IsSuccess)
-                .Select(result => result.Value)
-                .Where(transaction => transaction.Date.Month == transaction.Date.Month)
-                .
-                
-        }
-    }
-
-    private LargePackageRuleApplicationContext BuildLargePackageRuleApplicationContext(
-        int transactionIndex,
-        decimal availableBudget,
-        IEnumerable<Result<TransactionInputModel>> transactionResults
-    )
-    {
-        var isThirdAndLP = 
-
-        return new LargePackageRuleApplicationContext
-        {
-            AvailableBudget = availableBudget,
-            IsThirdTransactionWithLaPosteProviderThisMonth = transactionResults
-                .Where(result => result.IsSuccess)
-                .Select(result => result.Value)
-                .Where(transaction => transaction.Date.Month == transaction.Date.Month)
-                .
+            PackageSize.Small => new SmallPackageRuleApplicationContext
+            {
+                Size = transaction.Size,
+                Provider = transaction.Provider,
+                Date = transaction.Date,
+                AvailableBudget = availableBudget
+            },
+            PackageSize.Large => new LargePackageRuleApplicationContext
+            {
+                Size = transaction.Size,
+                Provider = transaction.Provider,
+                Date = transaction.Date,
+                AvailableBudget = availableBudget,
+                LaPosteTransactionsThisMonth = transactionResults
+                    .Where(result => result.IsSuccess)
+                    .Select(result => result.Value!)
+                    .Where(tr => tr.Date.Month == transaction.Date.Month)
+                    .Where(tr => tr.Provider is Provider.LaPoste)
+                    .Count()
+            },
+            PackageSize.Medium => new MediumPackageRuleApplicationContext
+            {
+                Size = transaction.Size,
+                Provider = transaction.Provider,
+                Date = transaction.Date,
+                AvailableBudget = availableBudget,
+            }
         };
-    }
 }
 
-public class DiscountCalculationService
+public class DiscountCalculationService(
+    IDiscountRule<SmallPackageRuleApplicationContext> smallPackageDiscountRule,
+    IDiscountRule<MediumPackageRuleApplicationContext> mediumPackageDiscountRule,
+    IDiscountRule<LargePackageRuleApplicationContext> largePackageDiscountRule,
+    IDiscountRuleApplicationContextBuilder discountRuleApplicationContextBuilder)
 {
-    private readonly IDiscountRule<SmallPackageRuleApplicationContext> _smallPackageDiscountRule;
-    private readonly IDiscountRule<LargePackageRuleApplicationContext> _largePackageDiscountRule;
-    private readonly IDiscountRuleApplicationContextBuilder _discountRuleApplicationContextBuilder;
-
-    public DiscountCalculationService()
-    {
-
-    }
 
     public IEnumerable<Result<DiscountedTransactionModel>> CalculateDiscounts(IEnumerable<Result<TransactionInputModel>> transactionResults)
     {
         var monthDiscountBudgetLookup = transactionResults
             .Where(result => result.IsSuccess)
             .Select(transaction => transaction.Value!.Date.Month)
+            .Distinct()
             .ToDictionary(month => month, _ => 10m);
 
         return transactionResults.Select((result, id) => 
             result.Select(transaction =>
             {
                 var availableBudget = monthDiscountBudgetLookup[transaction.Date.Month];
-                var context = _discountRuleApplicationContextBuilder.Build(id, availableBudget, transactionResults);
+                var context = discountRuleApplicationContextBuilder.Build(id, transaction, availableBudget, transactionResults);
                 var discountedTransaction = transaction.Size switch
                 {
-                    PackageSize.Small => _smallPackageDiscountRule.ApplyRule(context as SmallPackageRuleApplicationContext),
-                    PackageSize.Large => _largePackageDiscountRule.ApplyRule(context as LargePackageRuleApplicationContext),
+                    PackageSize.Small => smallPackageDiscountRule.ApplyRule(context as SmallPackageRuleApplicationContext),
+                    PackageSize.Medium => mediumPackageDiscountRule.ApplyRule(context as MediumPackageRuleApplicationContext),
+                    PackageSize.Large => largePackageDiscountRule.ApplyRule(context as LargePackageRuleApplicationContext),
                     _ => throw new ArgumentOutOfRangeException(nameof(transaction.Size))
                 };
 
