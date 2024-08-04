@@ -158,9 +158,9 @@ public class TransactionPriceRepository
         (Provider.LaPoste, PackageSize.Small) => 1.50m,
         (Provider.LaPoste, PackageSize.Medium) => 4.90m,
         (Provider.LaPoste, PackageSize.Large) => 6.90m,
-        (Provider.MondialRelay, PackageSize.Small) => 2m,
-        (Provider.MondialRelay, PackageSize.Medium) => 3m,
-        (Provider.MondialRelay, PackageSize.Large) => 4m,
+        (Provider.MondialRelay, PackageSize.Small) => 2.00m,
+        (Provider.MondialRelay, PackageSize.Medium) => 3.00m,
+        (Provider.MondialRelay, PackageSize.Large) => 4.00m,
         (_, _) => throw new ArgumentOutOfRangeException($"({provider}, {size})")
     };
 
@@ -210,7 +210,12 @@ public class LargePackageRuleApplicationContext
     public required PackageSize Size { get; init; }
     public required Provider Provider { get; init; }
     public required decimal AvailableBudget { get; init; }
-    public required int LaPosteTransactionsThisMonth { get; init; }
+
+    /// <summary>
+    /// Number of transactions that were shipped by LaPoste from the beginning
+    /// of this month to the current transaction (non-inclusive).
+    /// </summary>
+    public required int MonthlyLargeLaPosteTransactionCountBeforeCurrent { get; init; }
 }
 
 public interface IDiscountRule<TDiscountRuleApplicationContext> 
@@ -288,9 +293,9 @@ public class LargePackageSizeDiscountRule(TransactionPriceRepository transaction
         var currentPrice = transactionCostRepository.Get(context.Provider, context.Size);
         var coveredPrice = 0m;
 
-        if(context.LaPosteTransactionsThisMonth is 2)
+        if(IsThirdLargeLaPosteTransactionThisMonth(context))
         {
-            // This is the third transaction, try to cover the whole cost
+            // This is the third transaction, try to cover the whole cost.
             coveredPrice = Math.Min(context.AvailableBudget, currentPrice);
         }
 
@@ -302,6 +307,11 @@ public class LargePackageSizeDiscountRule(TransactionPriceRepository transaction
             coveredPrice
         );
     }
+
+    private bool IsThirdLargeLaPosteTransactionThisMonth(LargePackageRuleApplicationContext context)
+        => context.MonthlyLargeLaPosteTransactionCountBeforeCurrent is 2
+        && context.Size is PackageSize.Large
+        && context.Provider is Provider.LaPoste;
 }
 
 
@@ -335,11 +345,14 @@ public class DiscountRuleApplicationContextBuilder : IDiscountRuleApplicationCon
                 Provider = transaction.Provider,
                 Date = transaction.Date,
                 AvailableBudget = availableBudget,
-                LaPosteTransactionsThisMonth = transactionResults
+                MonthlyLargeLaPosteTransactionCountBeforeCurrent = transactionResults
+                    // We only want to count transactions up until the current one.
+                    .Take(transactionIndex)
                     .Where(result => result.IsSuccess)
                     .Select(result => result.Value!)
                     .Where(tr => tr.Date.Month == transaction.Date.Month)
                     .Where(tr => tr.Provider is Provider.LaPoste)
+                    .Where(tr => tr.Size is PackageSize.Large)
                     .Count()
             },
             PackageSize.Medium => new MediumPackageRuleApplicationContext
