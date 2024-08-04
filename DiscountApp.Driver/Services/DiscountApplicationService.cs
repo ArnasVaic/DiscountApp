@@ -6,11 +6,20 @@ using DiscountApp.Driver.Rules;
 
 namespace DiscountApp.Driver.Services;
 
+/// <summary>
+/// Apply discounts for transactions.
+/// </summary>
 public interface IDiscountApplicationService
 {
-    IEnumerable<Result<DiscountedTransactionModel>> CalculateDiscounts(IEnumerable<Result<TransactionInputModel>> transactionResults);
+    /// <summary>
+    /// Apply discounts.
+    /// </summary>
+    /// <param name="transactionResults">Parsed transactions</param>
+    /// <returns>Discounted transactions</returns>
+    IEnumerable<Result<DiscountedTransactionModel>> Apply(IEnumerable<Result<TransactionInputModel>> transactionResults);
 }
 
+/// <inheritdoc/>
 public class DiscountApplicationService(
     IDiscountApplicationRule<SmallPackageDiscountApplicationContext> smallPackageRule,
     IDiscountApplicationRule<MediumPackageDiscountApplicationContext> mediumPackageRule,
@@ -18,8 +27,13 @@ public class DiscountApplicationService(
     IDiscountApplicationContextBuilder discountRuleApplicationContextBuilder)
     : IDiscountApplicationService
 {
+    /// <summary>
+    /// Monthly discount budget.
+    /// </summary>
+    private const decimal MonthlyDiscountBudget = 10m;
 
-    public IEnumerable<Result<DiscountedTransactionModel>> CalculateDiscounts(IEnumerable<Result<TransactionInputModel>> transactionResults)
+    /// <inheritdoc/>
+    public IEnumerable<Result<DiscountedTransactionModel>> Apply(IEnumerable<Result<TransactionInputModel>> transactionResults)
     {
         var monthDiscountBudgetLookup = BuildMonthDiscountBudgetLookup(transactionResults);
 
@@ -43,13 +57,13 @@ public class DiscountApplicationService(
         .Where(result => result.IsSuccess)
         .Select(transaction => transaction.Value!.Date.Month)
         .Distinct()
-        .ToDictionary(month => month, _ => 10m);
+        .ToDictionary(month => month, _ => MonthlyDiscountBudget);
 
     private DiscountedTransactionModel ApplyDiscount(PackageSize size, IDiscountApplicationContext context) => size switch
     {
-        PackageSize.Small => smallPackageRule.ApplyRule(context as SmallPackageDiscountApplicationContext),
-        PackageSize.Medium => mediumPackageRule.ApplyRule(context as MediumPackageDiscountApplicationContext),
-        PackageSize.Large => largePackageRule.ApplyRule(context as LargePackageDiscountApplicationContext),
+        PackageSize.Small => smallPackageRule.ApplyRule((SmallPackageDiscountApplicationContext)context),
+        PackageSize.Medium => mediumPackageRule.ApplyRule((MediumPackageDiscountApplicationContext)context),
+        PackageSize.Large => largePackageRule.ApplyRule((LargePackageDiscountApplicationContext)context),
         _ => throw new ArgumentOutOfRangeException(nameof(size))
     };
 }
