@@ -35,7 +35,7 @@ public static class TransactionInputModelParser
             return input;
         }
 
-        if(!EnumParsingUtilities.TryParseByDisplayName<Provider>(tokens[2], out var provider))
+        if(!EnumParsingUtilities.TryParseByDisplayName<Carrier>(tokens[2], out var provider))
         {
             return input;
         }

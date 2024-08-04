@@ -19,18 +19,18 @@ public class DiscountApplicationServiceTests
         // ARRANGE
 
         IEnumerable<Result<TransactionInputModel>> inputTransactions = [
-            new TransactionInputModel(DateOnly.Parse("2024-01-01"), PackageSize.Large, Provider.LaPoste),
-            new TransactionInputModel(DateOnly.Parse("2024-01-02"), PackageSize.Large, Provider.LaPoste),
-            new TransactionInputModel(DateOnly.Parse("2024-01-03"), PackageSize.Large, Provider.LaPoste),
+            new TransactionInputModel(DateOnly.Parse("2024-01-01"), PackageSize.Large, Carrier.LaPoste),
+            new TransactionInputModel(DateOnly.Parse("2024-01-02"), PackageSize.Large, Carrier.LaPoste),
+            new TransactionInputModel(DateOnly.Parse("2024-01-03"), PackageSize.Large, Carrier.LaPoste),
         ];
 
         _largePackageRuleMock
             .Setup(x => x.ApplyRule(It.Is<LargePackageDiscountApplicationContext>(tr => tr.Date.Day == 3)))
-            .Returns(new DiscountedTransactionModel(DateOnly.Parse("2024-01-03"), PackageSize.Large, Provider.LaPoste, 0, 6.90m));
+            .Returns(new DiscountedTransactionModel(DateOnly.Parse("2024-01-03"), PackageSize.Large, Carrier.LaPoste, 0, 6.90m));
 
         _largePackageRuleMock
             .Setup(x => x.ApplyRule(It.Is<LargePackageDiscountApplicationContext>(tr => tr.Date.Day != 3)))
-            .Returns(new DiscountedTransactionModel(DateOnly.Parse("2024-01-02"), PackageSize.Large, Provider.LaPoste, 6.90m, 0));
+            .Returns(new DiscountedTransactionModel(DateOnly.Parse("2024-01-02"), PackageSize.Large, Carrier.LaPoste, 6.90m, 0));
 
         var service = CreateService();
         // ACT

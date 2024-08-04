@@ -13,9 +13,9 @@ public interface IDiscountApplicationContext
     DateOnly Date { get; init; }
     
     /// <summary>
-    /// Current transaction shipment provider.
+    /// Current transaction shipment carrier.
     /// </summary>
-    Provider Provider { get; init; }
+    Carrier Carrier { get; init; }
 
     /// <summary>
     /// Current transaction package size.
@@ -38,7 +38,7 @@ public class SmallPackageDiscountApplicationContext
     public required DateOnly Date { get; init; }
 
     /// <inheritdoc/>
-    public required Provider Provider { get; init; }
+    public required Carrier Carrier { get; init; }
 
     /// <inheritdoc/>
     public PackageSize Size { get; } = PackageSize.Small;
@@ -57,7 +57,7 @@ public class MediumPackageDiscountApplicationContext
     public required DateOnly Date { get; init; }
 
     /// <inheritdoc/>
-    public required Provider Provider { get; init; }
+    public required Carrier Carrier { get; init; }
 
     /// <inheritdoc/>
     public PackageSize Size { get; } = PackageSize.Medium;
@@ -73,7 +73,7 @@ public class LargePackageDiscountApplicationContext
     public required DateOnly Date { get; init; }
 
     /// <inheritdoc/>
-    public required Provider Provider { get; init; }
+    public required Carrier Carrier { get; init; }
 
     /// <inheritdoc/>
     public PackageSize Size { get; } = PackageSize.Large;

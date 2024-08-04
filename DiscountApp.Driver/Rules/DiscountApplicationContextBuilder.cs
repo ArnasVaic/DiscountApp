@@ -38,19 +38,19 @@ public class DiscountRuleApplicationContextBuilder : IDiscountApplicationContext
         {
             PackageSize.Small => new SmallPackageDiscountApplicationContext
             {
-                Provider = transaction.Provider,
+                Carrier = transaction.Carrier,
                 Date = transaction.Date,
                 AvailableBudget = availableBudget
             },
             PackageSize.Medium => new MediumPackageDiscountApplicationContext
             {
-                Provider = transaction.Provider,
+                Carrier = transaction.Carrier,
                 Date = transaction.Date,
                 AvailableBudget = availableBudget,
             },
             PackageSize.Large => new LargePackageDiscountApplicationContext
             {
-                Provider = transaction.Provider,
+                Carrier = transaction.Carrier,
                 Date = transaction.Date,
                 AvailableBudget = availableBudget,
                 MonthlyLargeLaPosteTransactionCountBeforeCurrent = transactionResults
@@ -59,7 +59,7 @@ public class DiscountRuleApplicationContextBuilder : IDiscountApplicationContext
                     .Where(result => result.IsSuccess)
                     .Select(result => result.Value!)
                     .Where(tr => tr.Date.Month == transaction.Date.Month)
-                    .Where(tr => tr.Provider is Provider.LaPoste)
+                    .Where(tr => tr.Carrier is Carrier.LaPoste)
                     .Where(tr => tr.Size is PackageSize.Large)
                     .Count()
             },

@@ -14,7 +14,7 @@ namespace DiscountApp.Driver.Models;
 public record DiscountedTransactionModel(
     DateOnly Date, 
     PackageSize Size, 
-    Provider Provider, 
+    Carrier Provider, 
     decimal DiscountedPrice, 
     decimal Discount)
 {

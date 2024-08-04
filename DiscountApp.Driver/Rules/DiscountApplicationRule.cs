@@ -23,7 +23,7 @@ where TDiscountApplicationContext
 /// <summary>
 /// Discount application rule for small packages.
 /// If possible, part of shipment price for small packages should be covered, so that price would 
-/// stay the same independent of the shipment provider.
+/// stay the same independent of the shipment carrier.
 /// </summary>
 public class SmallPackageRule(ITransactionPriceRepository transactionPriceRepository) 
     : IDiscountApplicationRule<SmallPackageDiscountApplicationContext>
@@ -34,13 +34,13 @@ public class SmallPackageRule(ITransactionPriceRepository transactionPriceReposi
         ArgumentNullException.ThrowIfNull(context);
 
         var lowestPrice = transactionPriceRepository.GetBestPriceForSize(context.Size);
-        var currentPrice = transactionPriceRepository.Get(context.Provider, context.Size);
+        var currentPrice = transactionPriceRepository.Get(context.Carrier, context.Size);
         var coveredPrice = Math.Min(context.AvailableBudget, currentPrice - lowestPrice);
 
         return new DiscountedTransactionModel(
             context.Date,
             context.Size,
-            context.Provider,
+            context.Carrier,
             currentPrice - coveredPrice,
             coveredPrice
         );
@@ -58,8 +58,8 @@ public class MediumPackageRule(ITransactionPriceRepository transactionPriceRepos
     public DiscountedTransactionModel ApplyRule(MediumPackageDiscountApplicationContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
-        var currentPrice = transactionPriceRepository.Get(context.Provider, context.Size);
-        return new DiscountedTransactionModel(context.Date, context.Size, context.Provider, currentPrice, 0);
+        var currentPrice = transactionPriceRepository.Get(context.Carrier, context.Size);
+        return new DiscountedTransactionModel(context.Date, context.Size, context.Carrier, currentPrice, 0);
     }
 }
 
@@ -75,7 +75,7 @@ public class LargePackageRule(ITransactionPriceRepository transactionCostReposit
     {
         ArgumentNullException.ThrowIfNull(context);
 
-        var currentPrice = transactionCostRepository.Get(context.Provider, context.Size);
+        var currentPrice = transactionCostRepository.Get(context.Carrier, context.Size);
         var coveredPrice = 0m;
 
         if(IsThirdLargeLaPosteTransactionThisMonth(context))
@@ -87,7 +87,7 @@ public class LargePackageRule(ITransactionPriceRepository transactionCostReposit
         return new DiscountedTransactionModel(
             context.Date, 
             context.Size, 
-            context.Provider, 
+            context.Carrier, 
             currentPrice - coveredPrice,
             coveredPrice
         );
@@ -96,5 +96,5 @@ public class LargePackageRule(ITransactionPriceRepository transactionCostReposit
     private static bool IsThirdLargeLaPosteTransactionThisMonth(LargePackageDiscountApplicationContext context)
         => context.MonthlyLargeLaPosteTransactionCountBeforeCurrent is 2
         && context.Size is PackageSize.Large
-        && context.Provider is Provider.LaPoste;
+        && context.Carrier is Carrier.LaPoste;
 }

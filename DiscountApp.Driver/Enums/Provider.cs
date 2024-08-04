@@ -3,9 +3,9 @@ using DiscountApp.Driver.Attributes;
 namespace DiscountApp.Driver.Enums;
 
 /// <summary>
-/// Type of provider.
+/// Type of carrier.
 /// </summary>
-public enum Provider
+public enum Carrier
 {       
     [DisplayName("LP")]
     LaPoste,

@@ -10,10 +10,10 @@ public interface ITransactionPriceRepository
     /// <summary>
     /// Get price based on the package size and the shipment provider.
     /// </summary>
-    /// <param name="provider">Shipment provider</param>
+    /// <param name="carrier">Shipment carrier</param>
     /// <param name="size">Package size</param>
     /// <returns>Transaction Price</returns>
-    decimal Get(Provider provider, PackageSize size);
+    decimal Get(Carrier carrier, PackageSize size);
 
     /// <summary>
     /// Get best price amongst competitors for a package of specific size.
@@ -26,20 +26,20 @@ public interface ITransactionPriceRepository
 public class HardcodedTransactionPriceRepository : ITransactionPriceRepository
 {
     /// <inheritdoc/>
-    public decimal Get(Provider provider, PackageSize size) => (provider, size) switch
+    public decimal Get(Carrier provider, PackageSize size) => (provider, size) switch
     {
-        (Provider.LaPoste, PackageSize.Small) => 1.50m,
-        (Provider.LaPoste, PackageSize.Medium) => 4.90m,
-        (Provider.LaPoste, PackageSize.Large) => 6.90m,
-        (Provider.MondialRelay, PackageSize.Small) => 2.00m,
-        (Provider.MondialRelay, PackageSize.Medium) => 3.00m,
-        (Provider.MondialRelay, PackageSize.Large) => 4.00m,
+        (Carrier.LaPoste, PackageSize.Small) => 1.50m,
+        (Carrier.LaPoste, PackageSize.Medium) => 4.90m,
+        (Carrier.LaPoste, PackageSize.Large) => 6.90m,
+        (Carrier.MondialRelay, PackageSize.Small) => 2.00m,
+        (Carrier.MondialRelay, PackageSize.Medium) => 3.00m,
+        (Carrier.MondialRelay, PackageSize.Large) => 4.00m,
         (_, _) => throw new ArgumentOutOfRangeException($"({provider}, {size})")
     };
 
     /// <inheritdoc/>
     public decimal GetBestPriceForSize(PackageSize size) => Enum
-        .GetValues<Provider>()
+        .GetValues<Carrier>()
         .Select(p => Get(p, size))
         .Min();
 }

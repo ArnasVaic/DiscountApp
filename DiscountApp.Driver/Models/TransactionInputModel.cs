@@ -7,5 +7,5 @@ namespace DiscountApp.Driver.Models;
 /// </summary>
 /// <param name="Date">Date of the transaction</param>
 /// <param name="Size">Package size</param>
-/// <param name="Provider">Shipping provider</param>
-public record TransactionInputModel(DateOnly Date, PackageSize Size, Provider Provider);
+/// <param name="Carrier">Shipping carrier</param>
+public record TransactionInputModel(DateOnly Date, PackageSize Size, Carrier Carrier);
