@@ -49,12 +49,23 @@ public readonly struct Result<T>
         _ => selector(Value)
     };
 
+    /// <summary>
+    /// Monadic bind.
+    /// </summary>
+    /// <typeparam name="TResult">Type of result</typeparam>
+    /// <param name="bind">bind function</param>
+    /// <returns>Bound result</returns>
     public Result<TResult> Bind<TResult>(Func<T, Result<TResult>> bind) => Value switch
     {
         null => Error!,
         _ => bind(Value)
     };
 
+    /// <summary>
+    /// Monadic bind to result with empty type.
+    /// </summary>
+    /// <param name="bind">bind function</param>
+    /// <returns>Bound result</returns>
     public Result Bind(Func<T, Result> bind) => Value switch
     {
         null => Error!,
