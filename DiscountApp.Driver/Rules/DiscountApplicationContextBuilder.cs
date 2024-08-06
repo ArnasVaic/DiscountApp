@@ -58,6 +58,7 @@ public class DiscountRuleApplicationContextBuilder : IDiscountApplicationContext
                     .Take(transactionIndex)
                     .Where(result => result.IsSuccess)
                     .Select(result => result.Value!)
+                    .Where(tr => tr.Date.Year == transaction.Date.Year)
                     .Where(tr => tr.Date.Month == transaction.Date.Month)
                     .Where(tr => tr.Carrier is Carrier.LaPoste)
                     .Where(tr => tr.Size is PackageSize.Large)
